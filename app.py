@@ -197,7 +197,9 @@ elif page == "🤖 AI Motivation":
                 else:
                     st.warning("Got a response, but the content is empty. Try a different prompt or model.")
             except Exception as e:
-                st.error(f"Ollama failed: {str(e)}")
+                st.warrning("AI features work best when running locally with Ollama installed and running.")
+                st.info("On this deployed version, Ollama isn't available. Try locally for full experience! 🚀")
+                st.caption(f"Error details (for debug): {str(e)}")
 
 elif page == "📅 Tasks & AI Prioritizer":
     st.title("📅 Tasks & AI Prioritizer")
@@ -254,7 +256,9 @@ elif page == "📅 Tasks & AI Prioritizer":
                         placeholder.markdown(full_response + "▌")  # cursor effect
                 placeholder.markdown(full_response)  # final clean
             except Exception as e:
-                st.error(f"Ollama issue: {str(e)}\nEnsure Ollama is running!")
+                st.warrning("AI features work best when running locally with Ollama installed and running.")
+                st.info("On this deployed version, Ollama isn't available. Try locally for full experience! 🚀")
+                st.caption(f"Error details (for debug): {str(e)}")
                       
     
 # footer
