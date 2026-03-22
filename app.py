@@ -185,20 +185,21 @@ elif page == "🤖 AI Motivation":
     if st.button("Generate Motivation Quote", type="primary"):
         with st.spinner("AI thinking..."):
             try:
-                import ollama # import here only
+                import ollama  # ← import HERE, only when needed
+                
                 user_prompt = (
                     "Give me one short, original, uplifting daily motivation quote or message "
                     "tailored for a Python coder/developer. Keep it 1-3 sentences, energetic, "
                     "positive, and include at least one emoji. Make it feel personal and fun!"
                 )
-                
+
                 stream = ollama.chat(
                     model='llama3.2:3b',
                     messages=[{'role': 'user', 'content': user_prompt}],
                     stream=True,
                     options={'temperature': 0.85, 'top_p': 0.92, 'num_predict': 120}
                 )
-                
+
                 placeholder = st.empty()
                 full_response = ""
                 for chunk in stream:
@@ -206,22 +207,22 @@ elif page == "🤖 AI Motivation":
                         delta = chunk['message']['content']
                         full_response += delta
                         placeholder.markdown(full_response + "▌")
-                    placeholder.markdown(full_response)
-                    st.balloons
+                placeholder.markdown(full_response)
+                st.balloons()
+
             except ImportError:
                 st.error("Ollama Python library not installed. Run `pip install ollama` locally.")
-                
             except Exception as e:
-                st.warrning("AI features work best when running locally with Ollama installed and running.")
-                st.info("On this deployed version, Ollama isn't available. Try locally for full experience! 🚀")
+                st.warning("AI features work best when running locally with Ollama installed and running (`ollama serve` in a terminal).")
+                st.info("On this deployed version (Streamlit Cloud), local AI isn't available — try it on your machine for the full experience! 🚀")
                 st.caption(f"Error details (for debug): {str(e)}")
 
 elif page == "📅 Tasks & AI Prioritizer":
     st.title("📅 Tasks & AI Prioritizer")
-    st.subheader("Manage Your Tasks")
-        
     
-    # Add new task (nicer layout)
+    st.subheader("Manage Your Tasks")
+    
+    # Add new task (clean layout)
     col_input, col_button = st.columns([4, 1])
     new_task = col_input.text_input("Add a new task:", key="new_task_input")
     if col_button.button("Add", use_container_width=True) and new_task.strip():
@@ -233,71 +234,90 @@ elif page == "📅 Tasks & AI Prioritizer":
         st.markdown("### Your Tasks")
         for i, t in enumerate(st.session_state.tasks):
             col_check, col_text, col_delete = st.columns([1, 6, 1])
-            done = col_check.checkbox("", value=t["done"], key=f"chk_{i}", help="Mark as done")
+            
+            # Checkbox (no label, just box)
+            done = col_check.checkbox(
+                label="",
+                value=t["done"],
+                key=f"chk_{i}",
+                help="Mark as done"
+            )
             if done != t["done"]:
                 st.session_state.tasks[i]["done"] = done
                 save_tasks()
                 st.rerun()
             
-            col_text.markdown(f"**{t['task']}**" if not t["done"] else f"~~{t['task']}~~")
+            # Show task with strikethrough if done
+            task_style = f"~~{t['task']}~~" if t["done"] else f"**{t['task']}**"
+            col_text.markdown(task_style)
             
+            # Delete button
             if col_delete.button("🗑", key=f"del_{i}", help="Delete task"):
                 del st.session_state.tasks[i]
                 save_tasks()
                 st.rerun()
-
-    # AI Prioritizer
-        if st.session_state.tasks and st.button("✨ AI Prioritize & Summarize", type="primary"):
+        
+        # ───────────────────────────────────────────────
+        # AI Prioritize & Summarize button
+        # ───────────────────────────────────────────────
+        if st.button("✨ AI Prioritize & Summarize", type="primary"):
             with st.spinner("AI analyzing your tasks..."):
                 try:
-                    import ollama # Lazy import - only runs when bitton clicked
-                
-                    pending_tasks = [t["tasks"] for t in st.session_state.tasks if not t["done"]]
+                    import ollama  # lazy import - only runs when button clicked
+                    
+                    pending_tasks = [t["task"] for t in st.session_state.tasks if not t["done"]]
                     if not pending_tasks:
                         st.info("No pending tasks to prioritize!")
                         st.stop()
                     
                     task_text = "\n".join(f"- {task}" for task in pending_tasks)
-                
+                    
                     user_prompt = (
-                            f"Here are my current pending tasks:\n{task_text}\n\n"
-                            "Summarize them briefly in one sentence, then assign each task a priority: "
-                            "High (urgent/important), Medium, or Low. "
-                            "Output in clean markdown bullet points with priority labels. "
-                            "Be concise, helpful, and encouraging!"
-                        )
-                
+                        f"Here are my current pending tasks:\n{task_text}\n\n"
+                        "Summarize them briefly in one sentence, then assign each task a priority: "
+                        "High (urgent/important), Medium, or Low. "
+                        "Output in clean markdown bullet points with priority labels. "
+                        "Be concise, helpful, and encouraging!"
+                    )
+                    
                     stream = ollama.chat(
-                            model='llama3.2:3b',
-                            messages=[{'role': 'user', 'content': user_prompt}],
-                            stream=True,
-                            options={
-                                'temperature': 0.7,
-                                'top_p': 0.9,
-                                'num_predict': 200
-                            }
-                        )
-                
+                        model='llama3.2:3b',
+                        messages=[{'role': 'user', 'content': user_prompt}],
+                        stream=True,
+                        options={
+                            'temperature': 0.7,
+                            'top_p': 0.9,
+                            'num_predict': 200
+                        }
+                    )
+                    
                     placeholder = st.empty()
                     full_response = ""
                     for chunk in stream:
                         if 'message' in chunk and 'content' in chunk['message']:
-                            full_response += chunk['message']['content']
+                            delta = chunk['message']['content']
                             full_response += delta
-                            placeholder.markdown(full_response + "▌")  # cursor effect
-                        
-                    placeholder.markdown(full_response)  # final clean
+                            placeholder.markdown(full_response + "▌")  # typing cursor
+                    
+                    placeholder.markdown(full_response)
                     st.success("Priorities ready!")
-            
+                
                 except ImportError:
-                    st.error("Ollama livrary not found. Run `pip install ollama` locally.")
+                    st.error("Ollama library not found. Run `pip install ollama` locally.")
                 
                 except Exception as e:
-                    st.warrning("AI features work best when running locally with Ollama installed and running.")
-                    st.info("On this deployed version, Ollama isn't available. Try locally for full experience! 🚀")
+                    st.warning(
+                        "AI features work best when running **locally** with Ollama installed and running "
+                        "(`ollama serve` in a separate terminal)."
+                    )
+                    st.info(
+                        "On this deployed version (Streamlit Cloud), local AI isn't available — "
+                        "try it on your machine for the full experience! 🚀"
+                    )
                     st.caption(f"Error details (for debug): {str(e)}")
-        else:
-            st.info("No Tasks yet - add one above!")
+    
+    else:
+        st.info("No tasks yet — add one above!")
                       
     
 # footer
