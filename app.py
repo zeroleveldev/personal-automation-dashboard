@@ -5,7 +5,6 @@ import requests
 from datetime import datetime
 import os
 import shutil
-import ollama
 import json
 from pathlib import Path
 
@@ -186,16 +185,32 @@ elif page == "🤖 AI Motivation":
     if st.button("Generate Motivation Quote", type="primary"):
         with st.spinner("AI thinking..."):
             try:
-                response = ollama.chat(
-                    model='llama3.2:3b',
-                    messages=[{'role': 'user', 'content': 'Give me one short uplifting quote for a Python programmer today! Include an emoji.'}]
+                import ollama # import here only
+                user_prompt = (
+                    "Give me one short, original, uplifting daily motivation quote or message "
+                    "tailored for a Python coder/developer. Keep it 1-3 sentences, energetic, "
+                    "positive, and include at least one emoji. Make it feel personal and fun!"
                 )
-                quote = response['message']['content'].strip()
-                if quote:
-                    st.success("Success! Here's your quote:")
-                    st.markdown(quote)
-                else:
-                    st.warning("Got a response, but the content is empty. Try a different prompt or model.")
+                
+                stream = ollama.chat(
+                    model='llama3.2:3b',
+                    messages=[{'role': 'user', 'content': user_prompt}],
+                    stream=True,
+                    options={'temperature': 0.85, 'top_p': 0.92, 'num_predict': 120}
+                )
+                
+                placeholder = st.empty()
+                full_response = ""
+                for chunk in stream:
+                    if 'message' in chunk and 'content' in chunk['message']:
+                        delta = chunk['message']['content']
+                        full_response += delta
+                        placeholder.markdown(full_response + "▌")
+                    placeholder.markdown(full_response)
+                    st.balloons
+            except ImportError:
+                st.error("Ollama Python library not installed. Run `pip install ollama` locally.")
+                
             except Exception as e:
                 st.warrning("AI features work best when running locally with Ollama installed and running.")
                 st.info("On this deployed version, Ollama isn't available. Try locally for full experience! 🚀")
@@ -232,33 +247,57 @@ elif page == "📅 Tasks & AI Prioritizer":
                 st.rerun()
 
     # AI Prioritizer
-        st.session_state.tasks and st.button("✨ AI Prioritize & Summarize", type="primary")
-        with st.spinner("AI analyzing your tasks..."):
-            try:
-                task_list = "\n".join([f"- {t['task']}" for t in st.session_state.tasks if not t['done']])
-                prompt = f"""
-                You are a smart task manager. Here are my pending tasks:
-                {task_list}
+        if st.session_state.tasks and st.button("✨ AI Prioritize & Summarize", type="primary"):
+            with st.spinner("AI analyzing your tasks..."):
+                try:
+                    import ollama # Lazy import - only runs when bitton clicked
                 
-                Summarize them briefly, then suggest priorities: High (urgent/important), Medium, Low. 
-                Output in clean bullet points with priority labels. Be concise and helpful!
-                """
-                response_stream = ollama.chat(
-                    model='llama3.2:3b',
-                    messages=[{'role': 'user', 'content': prompt}],
-                    stream=True
-                )
-                placeholder = st.empty()
-                full_response = ""
-                for chunk in response_stream:
-                    if 'message' in chunk and 'content' in chunk['message']:
-                        full_response += chunk['message']['content']
-                        placeholder.markdown(full_response + "▌")  # cursor effect
-                placeholder.markdown(full_response)  # final clean
-            except Exception as e:
-                st.warrning("AI features work best when running locally with Ollama installed and running.")
-                st.info("On this deployed version, Ollama isn't available. Try locally for full experience! 🚀")
-                st.caption(f"Error details (for debug): {str(e)}")
+                    pending_tasks = [t["tasks"] for t in st.session_state.tasks if not t["done"]]
+                    if not pending_tasks:
+                        st.info("No pending tasks to prioritize!")
+                        st.stop()
+                    
+                    task_text = "\n".join(f"- {task}" for task in pending_tasks)
+                
+                    user_prompt = (
+                            f"Here are my current pending tasks:\n{task_text}\n\n"
+                            "Summarize them briefly in one sentence, then assign each task a priority: "
+                            "High (urgent/important), Medium, or Low. "
+                            "Output in clean markdown bullet points with priority labels. "
+                            "Be concise, helpful, and encouraging!"
+                        )
+                
+                    stream = ollama.chat(
+                            model='llama3.2:3b',
+                            messages=[{'role': 'user', 'content': user_prompt}],
+                            stream=True,
+                            options={
+                                'temperature': 0.7,
+                                'top_p': 0.9,
+                                'num_predict': 200
+                            }
+                        )
+                
+                    placeholder = st.empty()
+                    full_response = ""
+                    for chunk in stream:
+                        if 'message' in chunk and 'content' in chunk['message']:
+                            full_response += chunk['message']['content']
+                            full_response += delta
+                            placeholder.markdown(full_response + "▌")  # cursor effect
+                        
+                    placeholder.markdown(full_response)  # final clean
+                    st.success("Priorities ready!")
+            
+                except ImportError:
+                    st.error("Ollama livrary not found. Run `pip install ollama` locally.")
+                
+                except Exception as e:
+                    st.warrning("AI features work best when running locally with Ollama installed and running.")
+                    st.info("On this deployed version, Ollama isn't available. Try locally for full experience! 🚀")
+                    st.caption(f"Error details (for debug): {str(e)}")
+        else:
+            st.info("No Tasks yet - add one above!")
                       
     
 # footer
